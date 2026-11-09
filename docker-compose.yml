@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: pas-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
+    volumes:
+      - pas_pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  
+  loader:
+    build: .
+    container_name: pas-loader
+    restart: unless-stopped
+
+    command: ["python", "src/scheduler.py"]
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      TZ: Europe/Moscow
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./.env:/app/.env
+      - ./data/raw:/app/data/raw
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+  
+  dashboard:
+    build: .
+    container_name: pas-dashboard
+    restart: unless-stopped
+
+    command: ["streamlit", "run", "src/dashboard.py", "--server.address=0.0.0.0"]
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+
+    env_file:
+      - .env
+
+    ports:
+      - "8501:8501"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pas_pgdata:

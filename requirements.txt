@@ -1,0 +1,12 @@
+pandas
+requests
+python-dotenv
+python-dateutil
+lxml
+openpyxl
+psycopg2-binary
+schedule
+streamlit
+plotly
+scikit-learn
+sqlalchemy
